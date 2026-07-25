@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.log
+*.pcap
+!backup.pcap
+.env
+dist/
+proof/diff.png
+proof/original/
+proof/compare/

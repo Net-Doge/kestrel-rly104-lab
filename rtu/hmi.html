@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kestrel RLY-104 Feeder Guard RTU</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --desktop: #1d2830;
+      --face: #9aa7ad;
+      --panel: #b7c1c4;
+      --inset: #25333b;
+      --light: #e6edf0;
+      --mid: #66747a;
+      --dark: #1f2a30;
+      --black: #1f2a30;
+      --blue: #243f56;
+      --text: #10171b;
+      --ok: #00a86b;
+      --warn: #d69a2d;
+      --bad: #a3342f;
+      --pipe: #3f4e56;
+      --water: #0095a8;
+      --readout: #061018;
+      --readout-text: #4eff9a;
+      --amber: #ffcc57;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-width: 320px;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      background: var(--desktop);
+      color: var(--text);
+      font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
+      height: 100vh;
+      height: 100dvh;
+      letter-spacing: 0;
+    }
+    .app {
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .titlebar {
+      min-height: 32px;
+      background: var(--blue);
+      color: var(--amber);
+      border-bottom: 2px solid var(--black);
+      padding: 6px 10px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(15px, 1.7vw, 22px);
+      font-weight: 700;
+      letter-spacing: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .badge {
+      background: var(--readout);
+      color: var(--readout-text);
+      border: 2px solid var(--dark);
+      padding: 3px 8px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(620px, 1fr) 380px;
+      gap: 10px;
+      width: min(1360px, 100%);
+      margin: 0 auto;
+      padding: 10px;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .window {
+      background: var(--panel);
+      border: 2px solid var(--dark);
+      box-shadow: inset 1px 1px 0 var(--light);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .window-title {
+      height: 26px;
+      background: var(--blue);
+      color: var(--amber);
+      border: 2px solid var(--panel);
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mimic {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .mimic-frame {
+      margin: 8px;
+      min-height: 0;
+      background: var(--inset);
+      border: 2px solid var(--dark);
+      box-shadow: inset 0 0 0 2px var(--mid);
+      overflow: hidden;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #8f9da3;
+    }
+    .gridline { stroke: #75858c; stroke-width: 1; }
+    .bus { stroke: #c1a247; stroke-width: 12; stroke-linecap: square; stroke-linejoin: bevel; stroke-miterlimit: 1; }
+    .line { stroke: var(--pipe); stroke-width: 8; fill: none; stroke-linecap: butt; stroke-linejoin: bevel; stroke-miterlimit: 1; }
+    .open { stroke: var(--bad); }
+    .closed { stroke: var(--ok); }
+    .device { fill: #b7c1c4; stroke: #1f2a30; stroke-width: 2; }
+    .device-top { fill: #e6edf0; opacity: .55; }
+    .label { fill: #10171b; font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .small { fill: #10171b; font-size: 12px; text-anchor: middle; }
+    .tiny { fill: #10171b; font-size: 11px; text-anchor: middle; }
+    .lamp { stroke: #20241d; stroke-width: 3; }
+    .lamp-ok { fill: var(--ok); }
+    .lamp-warn { fill: #ffd24a; }
+    .lamp-bad { fill: var(--bad); }
+    .flow {
+      stroke: var(--water);
+      stroke-width: 4;
+      stroke-linecap: butt;
+      stroke-linejoin: bevel;
+      stroke-miterlimit: 1;
+      stroke-dasharray: 14 10;
+      animation: flow 1.3s steps(6, end) infinite;
+    }
+    @keyframes flow { to { stroke-dashoffset: -24; } }
+    .side {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 10px;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .panel {
+      background: var(--panel);
+      border: 2px solid var(--dark);
+      box-shadow: inset 1px 1px 0 var(--light);
+      padding: 8px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .panel h2 {
+      margin: 0 0 7px;
+      padding: 3px 6px;
+      background: var(--blue);
+      color: var(--amber);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      min-width: 0;
+    }
+    .kv {
+      background: var(--readout);
+      border: 2px solid var(--dark);
+      box-shadow: inset 0 0 0 1px #1b2a20;
+      padding: 6px;
+      min-height: 56px;
+      min-width: 0;
+    }
+    .kv span {
+      display: block;
+      color: var(--amber);
+      font-size: 11px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .kv strong {
+      display: block;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 18px;
+      color: var(--readout-text);
+      line-height: 1.15;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .state-grid .kv strong {
+      font-size: 12px;
+      max-height: 42px;
+      overflow: hidden;
+    }
+    .alarm-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: 0;
+    }
+    .table-wrap {
+      min-height: 0;
+      overflow: hidden;
+      border: 2px solid var(--dark);
+      box-shadow: inset 0 0 0 1px #1b2a20;
+      background: var(--readout);
+    }
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-size: 12px;
+      color: var(--readout-text);
+    }
+    col.id { width: 108px; }
+    col.sev { width: 66px; }
+    th, td {
+      text-align: left;
+      border: 1px solid #808080;
+      padding: 5px 6px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    th {
+      background: #3c3521;
+      color: var(--amber);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sev-WARN { color: var(--warn); }
+    .sev-HIGH, .sev-CRIT { color: var(--bad); font-weight: 700; }
+    @media (max-width: 1040px) {
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 52fr) minmax(0, 48fr); }
+      .side { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(134px, .82fr) minmax(0, 1fr); }
+      .alarm-panel { grid-column: 1 / -1; }
+      .panel { padding: 6px; }
+      .panel h2 { margin-bottom: 5px; padding: 2px 5px; line-height: 1.1; }
+      .grid { gap: 5px; }
+      .kv { min-height: 44px; padding: 5px; }
+      .kv span { font-size: 10px; margin-bottom: 3px; }
+      .kv strong { font-size: 15px; }
+      .state-grid .kv strong { font-size: 11px; }
+      th, td { padding: 4px 5px; }
+    }
+    @media (max-width: 560px) {
+      .titlebar { grid-template-columns: 1fr; }
+      .badge { width: fit-content; }
+      main { padding: 6px; gap: 6px; }
+      .side { gap: 6px; }
+      .side .grid { grid-template-columns: 1fr 1fr; gap: 4px; }
+      .mimic-frame { margin: 6px; }
+      .panel { padding: 5px; }
+      .panel h2 { margin-bottom: 4px; }
+      .kv { min-height: 0; padding: 4px; }
+      .kv span { font-size: 9px; margin-bottom: 2px; }
+      .kv strong { font-size: 13px; }
+      .state-grid .kv strong { font-size: 10px; }
+      table { font-size: 10px; }
+      th, td { padding: 3px 4px; }
+      col.id { width: 86px; }
+      col.sev { width: 58px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+  <header class="titlebar">
+    <h1>Kestrel RLY-104 Feeder Guard</h1>
+    <div class="badge">CA 17 / IEC 60870-5-104</div>
+  </header>
+  <main>
+    <section class="window mimic" aria-label="process mimic">
+      <div class="window-title">KESTREL EAST FEEDER TRANSFER</div>
+      <div class="mimic-frame">
+        <svg viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet" role="img">
+          <line class="gridline" x1="80" y1="150" x2="920" y2="150"></line>
+          <line class="gridline" x1="80" y1="250" x2="920" y2="250"></line>
+          <line class="gridline" x1="80" y1="350" x2="920" y2="350"></line>
+          <line class="gridline" x1="80" y1="450" x2="920" y2="450"></line>
+          <line class="gridline" x1="250" y1="70" x2="250" y2="570"></line>
+          <line class="gridline" x1="500" y1="70" x2="500" y2="570"></line>
+          <line class="gridline" x1="750" y1="70" x2="750" y2="570"></line>
+
+          <text class="label" x="500" y="58">11 kV EAST BUS</text>
+          <line class="bus" x1="120" y1="95" x2="880" y2="95"></line>
+          <line id="busFlowMain" class="flow" x1="120" y1="96" x2="250" y2="96"></line>
+          <line id="busFlowTie" class="flow" x1="750" y1="96" x2="880" y2="96"></line>
+          <rect class="device" x="385" y="116" width="230" height="44"></rect>
+          <rect class="device-top" x="389" y="120" width="222" height="10"></rect>
+          <text class="small" x="500" y="144">Kestrel Controls RLY-104</text>
+
+          <path class="line" d="M250 95 L250 200"></path>
+          <line id="mainDropFlow" class="flow" x1="250" y1="95" x2="250" y2="200"></line>
+          <rect class="device" x="175" y="200" width="150" height="92"></rect>
+          <rect class="device-top" x="179" y="204" width="142" height="14"></rect>
+          <text class="label" x="250" y="238">52-M</text>
+          <text class="small" x="250" y="264" id="mainTxt">closed</text>
+          <circle id="mainLamp" class="lamp" cx="205" cy="226" r="12"></circle>
+
+          <path class="line" d="M750 95 L750 200"></path>
+          <line id="tieDropFlow" class="flow" x1="750" y1="95" x2="750" y2="200"></line>
+          <rect class="device" x="675" y="200" width="150" height="92"></rect>
+          <rect class="device-top" x="679" y="204" width="142" height="14"></rect>
+          <text class="label" x="750" y="238">52-T</text>
+          <text class="small" x="750" y="264" id="tieTxt">open</text>
+          <circle id="tieLamp" class="lamp" cx="705" cy="226" r="12"></circle>
+
+          <path id="tiePath" class="line open" d="M325 246 L675 246"></path>
+          <line id="tieBridgeFlow" class="flow" x1="325" y1="247" x2="675" y2="247"></line>
+          <text class="tiny" x="500" y="232">TRANSFER TIE</text>
+
+          <line class="line" x1="250" y1="292" x2="250" y2="399"></line>
+          <line class="line" x1="250" y1="395" x2="385" y2="395"></line>
+          <g id="pumpInletFlow">
+            <line class="flow" x1="250" y1="292" x2="250" y2="399"></line>
+            <line class="flow" x1="250" y1="396" x2="385" y2="396"></line>
+          </g>
+          <rect class="device" x="385" y="340" width="230" height="110"></rect>
+          <rect class="device-top" x="389" y="344" width="222" height="16"></rect>
+          <text class="label" x="500" y="383">P-43 TRANSFER PUMP</text>
+          <text class="small" x="500" y="416" id="pumpTxt">running</text>
+          <circle id="pumpLamp" class="lamp" cx="415" cy="420" r="12"></circle>
+          <line class="line" x1="615" y1="395" x2="754" y2="395"></line>
+          <line class="line" x1="750" y1="399" x2="750" y2="292"></line>
+          <g id="pumpOutletFlow">
+            <line class="flow" x1="615" y1="396" x2="754" y2="396"></line>
+            <line class="flow" x1="750" y1="400" x2="750" y2="292"></line>
+          </g>
+
+          <rect class="device" x="85" y="510" width="250" height="86"></rect>
+          <rect class="device-top" x="89" y="514" width="242" height="14"></rect>
+          <text class="label" x="210" y="548">PHASE ANGLE</text>
+          <text class="small" x="210" y="574" id="angleTxt">-- deg</text>
+
+          <rect class="device" x="375" y="510" width="250" height="86"></rect>
+          <rect class="device-top" x="379" y="514" width="242" height="14"></rect>
+          <text class="label" x="500" y="548">INTERLOCK BYPASS</text>
+          <text class="small" x="500" y="574" id="bypassTxt">inactive</text>
+
+          <rect class="device" x="665" y="510" width="250" height="86"></rect>
+          <rect class="device-top" x="669" y="514" width="242" height="14"></rect>
+          <text class="label" x="790" y="548">FEEDER TRIP</text>
+          <text class="small" x="790" y="574" id="tripTxt">clear</text>
+        </svg>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="panel">
+        <h2>Live Measurements</h2>
+        <div class="grid">
+          <div class="kv"><span>Bus Voltage</span><strong id="voltage">--</strong></div>
+          <div class="kv"><span>Feeder Load</span><strong id="load">--</strong></div>
+          <div class="kv"><span>Sync Angle</span><strong id="angle">--</strong></div>
+          <div class="kv"><span>TX Temp</span><strong id="temp">--</strong></div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Controller State</h2>
+        <div class="grid state-grid">
+          <div class="kv"><span>Scan</span><strong id="scan">--</strong></div>
+          <div class="kv"><span>Handoff</span><strong id="auth">--</strong></div>
+          <div class="kv"><span>Last Auth</span><strong id="lastAuth">--</strong></div>
+          <div class="kv"><span>Last Command</span><strong id="lastCmd">--</strong></div>
+        </div>
+      </section>
+      <section class="panel alarm-panel">
+        <h2>Alarm Table</h2>
+        <div class="table-wrap">
+          <table>
+            <colgroup><col class="id"><col class="sev"><col></colgroup>
+            <thead><tr><th>ID</th><th>Severity</th><th>Message</th></tr></thead>
+            <tbody id="alarms"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+  </main>
+  </div>
+  <script>
+    const escapeHtml = value => String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+    const text = (id, value) => document.getElementById(id).textContent = value;
+    const show = (id, active) => document.getElementById(id).style.display = active ? "" : "none";
+    const lamp = (id, cls) => {
+      const el = document.getElementById(id);
+      el.setAttribute("class", "lamp " + cls);
+    };
+    async function refresh() {
+      const [statusResponse, alarmResponse] = await Promise.all([
+        fetch("/status.json", { cache: "no-store" }),
+        fetch("/alarms", { cache: "no-store" }),
+      ]);
+      const state = await statusResponse.json();
+      const alarmState = await alarmResponse.json();
+      const p = state.process;
+      text("voltage", p.bus_voltage_kv.toFixed(2) + " kV");
+      text("load", p.feeder_load_mw.toFixed(2) + " MW");
+      text("angle", p.sync_angle_deg.toFixed(1) + " deg");
+      text("temp", p.transformer_temp_c.toFixed(1) + " C");
+      text("scan", state.scan);
+      text("auth", state.authorized ? state.authorized_ttl.toFixed(1) + " s" : "inactive");
+      text("lastAuth", state.last_handoff);
+      text("lastCmd", state.last_command);
+      text("mainTxt", p.main_breaker_closed ? "closed" : "open");
+      text("tieTxt", p.tie_breaker_closed ? "closed" : "open");
+      text("pumpTxt", p.transfer_pump_running ? "running" : "stopped");
+      text("angleTxt", p.sync_angle_deg.toFixed(1) + " deg");
+      text("bypassTxt", p.interlock_bypass ? "active" : "inactive");
+      text("tripTxt", p.feeder_trip ? "tripped" : "clear");
+      lamp("mainLamp", p.main_breaker_closed ? "lamp-ok" : "lamp-bad");
+      lamp("tieLamp", p.tie_breaker_closed ? "lamp-ok" : "lamp-bad");
+      lamp("pumpLamp", p.transfer_pump_running ? "lamp-ok" : "lamp-bad");
+      document.getElementById("tiePath").setAttribute("class", "line " + (p.tie_breaker_closed ? "closed" : "open"));
+      const energized = !p.feeder_trip && p.bus_voltage_kv > 0.2;
+      const mainFeed = energized && p.main_breaker_closed;
+      const pumpFeed = mainFeed && p.transfer_pump_running;
+      const tieFeed = energized && p.tie_breaker_closed;
+      const transferFlow = pumpFeed && p.tie_breaker_closed;
+      show("busFlowMain", mainFeed);
+      show("mainDropFlow", mainFeed);
+      show("pumpInletFlow", pumpFeed);
+      show("busFlowTie", tieFeed);
+      show("tieDropFlow", tieFeed);
+      show("tieBridgeFlow", transferFlow);
+      show("pumpOutletFlow", transferFlow);
+      const rows = alarmState.alarms.map(a => `<tr><td>${escapeHtml(a.id)}</td><td class="sev-${escapeHtml(a.severity)}">${escapeHtml(a.severity)}</td><td>${escapeHtml(a.message)}</td></tr>`);
+      document.getElementById("alarms").innerHTML = rows.join("") || "<tr><td colspan='3'>clear</td></tr>";
+    }
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Runtime dependencies: none.
+#
+# The RTU simulator, the IEC-104 client, the browser console and the discovery
+# scanner are written against the Python standard library only. That is a
+# deliberate constraint: the lab has to install on an isolated VM with no
+# package index reachable, and a pinned dependency tree would defeat that.
+#
+# Python 3.10 or newer is the only requirement.
+#
+#   python3 rtu/kestrel_sim.py --iec 2404 --hmi 8080
+#   python3 client/rtu_shell.py <host> 2404 --hmi 8080
+#   python3 console/console.py --port 8081
+#
+# Optional extras used only by the screenshot/fidelity tooling in proof/ are in
+# requirements-dev.txt. Nothing in the lab itself needs them.

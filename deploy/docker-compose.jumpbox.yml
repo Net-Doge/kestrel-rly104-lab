@@ -1,0 +1,52 @@
+# JUMP BOX — the only host permitted to talk to the RTU.
+#
+#   docker compose -f deploy/docker-compose.jumpbox.yml up -d
+#
+# Sits outside the firewall that protects the RTU VM and is the single pivot
+# into it. Two ways to drive the RTU from here:
+#
+#   browser   http://<jumpbox>:8081/        type the RTU's address, run commands
+#   terminal  docker compose -f deploy/docker-compose.jumpbox.yml exec jumpbox \
+#               python3 /opt/kestrel/client/rtu_shell.py <rtu-ip> 2404 --hmi 8080
+#
+# It holds no configuration for any particular RTU and makes only OUTBOUND
+# connections, so the firewall rule on the RTU side is a single source address.
+#
+# Optional: prefill the form for a guided exercise
+#   CONSOLE_SUGGEST_HOST=10.20.30.5 CONSOLE_SUGGEST_HMI=8080 \
+#     docker compose -f deploy/docker-compose.jumpbox.yml up -d
+
+services:
+  jumpbox:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: kestrel-rly104:latest
+    container_name: kestrel-jumpbox
+    hostname: jumpbox
+    restart: unless-stopped
+    entrypoint: ["python3", "/opt/kestrel/console/console.py",
+                 "--listen", "0.0.0.0", "--port", "8081"]
+    ports:
+      - "${CONSOLE_BIND:-0.0.0.0}:${CONSOLE_PORT:-8081}:8081"
+    environment:
+      CONSOLE_SUGGEST_HOST: "${CONSOLE_SUGGEST_HOST:-}"
+      CONSOLE_SUGGEST_PORT: "${CONSOLE_SUGGEST_PORT:-2404}"
+      CONSOLE_SUGGEST_HMI: "${CONSOLE_SUGGEST_HMI:-}"
+    # Lets you reach an RTU published on THIS machine's host during testing:
+    # enter host.docker.internal in the page. Irrelevant once the RTU is on a
+    # different box - then you just type its IP.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    cap_add:
+      - NET_RAW
+    labels:
+      ot.role: "jump-box"
+      ot.protocol: "http"
+      ot.purpose: "sole permitted path to the RTU"
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/api/banner', timeout=3)"]
+      interval: 15s
+      timeout: 4s
+      retries: 3
